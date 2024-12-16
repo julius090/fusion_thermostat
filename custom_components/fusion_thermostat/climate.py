@@ -382,9 +382,9 @@ class ThermostatSonoff(ClimateEntity, RestoreEntity):
         if delay > 0:
             _LOGGER.debug(f"Verzögerung von {delay} Sekunden.")
             await asyncio.sleep(delay)
-        calibration_entity_id = f"input_number.{entity_id.split(".")[1]}_local_temperature_calibration"
-        real_thermostat_calibration = self.hass.states.get(f"input_number.{entity_id.split(".")[1]}_local_temperature_calibration").state
-        await self.hass.services.async_call(domain="input_number", service="set_value", service_data={"entity_id": calibration_entity_id,"value": calibration_value})
+        calibration_entity_id = f"number.{entity_id.split(".")[1]}_local_temperature_calibration"
+        real_thermostat_calibration = self.hass.states.get(f"number.{entity_id.split(".")[1]}_local_temperature_calibration").state
+        await self.hass.services.async_call(domain="number", service="set_value", service_data={"entity_id": calibration_entity_id,"value": calibration_value})
         _LOGGER.debug("Calibration value set to %s for real Thermostat %s", calibration_value, entity_id)
 
     @property
