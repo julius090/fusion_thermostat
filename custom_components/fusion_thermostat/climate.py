@@ -47,15 +47,15 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
 
 async def async_setup_platform(hass: HomeAssistant, config: ConfigType, async_add_entities: AddEntitiesCallback, discovery_info=None) -> None:
     """
-    Sets up the ThermostatSonoff platform for Home Assistant. This function initializes
-    the platform, registers the reload service, and adds the ThermostatSonoff entity
+    Sets up the FusionThermostat platform for Home Assistant. This function initializes
+    the platform, registers the reload service, and adds the FusionThermostat entity
     to the Home Assistant ecosystem. It retrieves configuration parameters necessary
     for the thermostat's operation and handles exceptions during the setup process.
 
     Parameters
     ----------
     hass: HomeAssistant
-        The HomeAssistant instance to associate the ThermostatSonoff platform with.
+        The HomeAssistant instance to associate the FusionThermostat platform with.
 
     config: ConfigType
         The configuration dictionary providing specific details for the platform such as
@@ -71,9 +71,9 @@ async def async_setup_platform(hass: HomeAssistant, config: ConfigType, async_ad
     Raises
     ------
     Exception
-        If any error occurs during the setup of the ThermostatSonoff platform.
+        If any error occurs during the setup of the FusionThermostat platform.
     """
-    _LOGGER.debug("Setting up ThermostatSonoff platform")
+    _LOGGER.debug("Setting up FusionThermostat platform")
     try:
         # Registriert den Reload-Service für diese Integration
         await async_setup_reload_service(hass, DOMAIN, PLATFORMS)
@@ -89,14 +89,14 @@ async def async_setup_platform(hass: HomeAssistant, config: ConfigType, async_ad
         window_delay = config.get(CONF_WINDOW_DELAY)
 
         async_add_entities([
-            ThermostatSonoff(name, temperature_entity_id, real_thermostats, windows_sensor, window_delay, min_temp, max_temp, hot_tolerance, cold_tolerance)
+            FusionThermostat(name, temperature_entity_id, real_thermostats, windows_sensor, window_delay, min_temp, max_temp, hot_tolerance, cold_tolerance)
         ])
-        _LOGGER.info("ThermostatSonoff platform set up successfully")
+        _LOGGER.info("FusionThermostat platform set up successfully")
     except Exception as e:
         _LOGGER.error("Error during setup: %s", e)
         raise
 
-class ThermostatSonoff(ClimateEntity, RestoreEntity):
+class FusionThermostat(ClimateEntity, RestoreEntity):
     def __init__(self, name, temperature_entity_id, real_thermostats, windows_sensor, window_delay, min_temp, max_temp, hot_tolerance, cold_tolerance):
         self._name = name
         self._unique_id = f"{self._name}_{DOMAIN}"
@@ -157,7 +157,6 @@ class ThermostatSonoff(ClimateEntity, RestoreEntity):
             self._current_temperature = last_state.attributes.get("current_temperature", self._current_temperature)
             _LOGGER.debug("Restored state for %s: hvac_mode=%s, hvac_action=%s, target_temperature=%s, current_temperature=%s",
                           self.name, self._hvac_mode, self._hvac_action, self._target_temperature, self._current_temperature)
-
 
     async def async_set_hvac_mode(self, hvac_mode: str) -> None:
         """Set new target hvac mode."""
@@ -390,13 +389,13 @@ class ThermostatSonoff(ClimateEntity, RestoreEntity):
     @property
     def name(self):
         if self._name is None:
-            _LOGGER.warning("Name property is None for ThermostatSonoff")
+            _LOGGER.warning("Name property is None for FusionThermostat")
         return self._name
 
     @property
     def unique_id(self):
         if self._unique_id is None:
-            _LOGGER.warning("Unique ID property is None for ThermostatSonoff")
+            _LOGGER.warning("Unique ID property is None for FusionThermostat")
         return self._unique_id
 
     @property
