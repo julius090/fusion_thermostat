@@ -1,0 +1,5 @@
+{
+  "name": "Fusion Thermostat",
+  "render_readme": false,
+  "homeassistant": "2024.12.0"
+}
