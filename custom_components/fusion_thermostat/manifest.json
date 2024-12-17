@@ -1,7 +1,7 @@
 {
   "domain": "fusion_thermostat",
   "name": "Fusion Thermostat",
-  "version": "1.0",
+  "version": "1.1-beta1",
   "requirements": [],
   "dependencies": [],
   "codeowners": ["@julius090"]
