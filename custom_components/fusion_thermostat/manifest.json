@@ -1,8 +1,9 @@
 {
   "domain": "fusion_thermostat",
   "name": "Fusion Thermostat",
-  "version": "1.1-beta1",
+  "version": "1.1-beta2",
   "requirements": [],
   "dependencies": [],
-  "codeowners": ["@julius090"]
+  "codeowners": ["@julius090"],
+  "config_flow": false
 }
