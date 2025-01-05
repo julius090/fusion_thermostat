@@ -30,7 +30,9 @@ CONF_MIN_TEMP = "min_temp"
 CONF_MAX_TEMP = "max_temp"
 CONF_COLD_TOLERANCE = "cold_tolerance"
 CONF_HOT_TOLERANCE = "hot_tolerance"
+CONF_CALIBRATION_VALUE = "calibration_value"
 CONF_WINDOW_DELAY = "window_delay"
+CONF_TEST_SERVER = "test_server"
 
 # Validation of the user's configuration
 PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
@@ -42,7 +44,9 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
     vol.Optional(CONF_MAX_TEMP, default=25): cv.positive_float,
     vol.Optional(CONF_HOT_TOLERANCE, default=0.5): cv.positive_float,
     vol.Optional(CONF_COLD_TOLERANCE, default=0.5): cv.positive_float,
+    vol.Optional(CONF_CALIBRATION_VALUE, default=5): cv.positive_int,
     vol.Optional(CONF_WINDOW_DELAY, default=10): cv.positive_int,
+    vol.Optional(CONF_TEST_SERVER, default=False): cv.boolean,
 })
 
 async def async_setup_platform(hass: HomeAssistant, config: ConfigType, async_add_entities: AddEntitiesCallback, discovery_info=None) -> None:
@@ -86,10 +90,12 @@ async def async_setup_platform(hass: HomeAssistant, config: ConfigType, async_ad
         max_temp = config.get(CONF_MAX_TEMP)
         cold_tolerance = config.get(CONF_COLD_TOLERANCE)
         hot_tolerance = config.get(CONF_HOT_TOLERANCE)
+        calibration_value = config.get(CONF_CALIBRATION_VALUE)
         window_delay = config.get(CONF_WINDOW_DELAY)
+        test_server = config.get(CONF_TEST_SERVER)
 
         async_add_entities([
-            FusionThermostat(name, temperature_entity_id, real_thermostats, windows_sensor, window_delay, min_temp, max_temp, hot_tolerance, cold_tolerance)
+            FusionThermostat(name, temperature_entity_id, real_thermostats, windows_sensor, window_delay, min_temp, max_temp, hot_tolerance, cold_tolerance, calibration_value, test_server)
         ])
         _LOGGER.info("FusionThermostat platform set up successfully")
     except Exception as e:
@@ -97,7 +103,7 @@ async def async_setup_platform(hass: HomeAssistant, config: ConfigType, async_ad
         raise
 
 class FusionThermostat(ClimateEntity, RestoreEntity):
-    def __init__(self, name, temperature_entity_id, real_thermostats, windows_sensor, window_delay, min_temp, max_temp, hot_tolerance, cold_tolerance):
+    def __init__(self, name, temperature_entity_id, real_thermostats, windows_sensor, window_delay, min_temp, max_temp, hot_tolerance, cold_tolerance, calibration_value, test_server):
         self._name = name
         self._unique_id = f"{self._name}_{DOMAIN}"
         self._temperature_unit = UnitOfTemperature.CELSIUS
@@ -108,7 +114,8 @@ class FusionThermostat(ClimateEntity, RestoreEntity):
         self._max_temp = max_temp
         self._hot_tolerance = hot_tolerance
         self._cold_tolerance = cold_tolerance
-        self._local_temperature_calibration = 0.0
+        self._calibration_value = calibration_value
+        self._local_temperature_calibration = 0
         self._hvac_mode = HVACMode.HEAT
         self._hvac_modes = [HVACMode.OFF, HVACMode.HEAT]
         self._hvac_action = HVACAction.HEATING
@@ -123,6 +130,7 @@ class FusionThermostat(ClimateEntity, RestoreEntity):
         self._window_delay = window_delay
         self._is_updating_real_thermostats = False
         self._cancel_call = None
+        self._test_server = test_server
 
     async def async_added_to_hass(self):
         """Handle entity which will be added."""
@@ -339,7 +347,7 @@ class FusionThermostat(ClimateEntity, RestoreEntity):
     async def _async_set_hvac_action_heating(self):
         self._hvac_action = HVACAction.HEATING
         for target in self._real_thermostats:
-            await self._async_real_thermostat_set_calibration(calibration_value=-5, entity_id=target, delay=self._call_delay)
+            await self._async_real_thermostat_set_calibration(calibration_value=-self._calibration_value, entity_id=target, delay=self._call_delay)
 
     async def _async_set_hvac_action_off(self):
         self._hvac_action = HVACAction.OFF
@@ -349,7 +357,7 @@ class FusionThermostat(ClimateEntity, RestoreEntity):
     async def _async_set_hvac_action_idle(self):
         self._hvac_action = HVACAction.IDLE
         for target in self._real_thermostats:
-            await self._async_real_thermostat_set_calibration(calibration_value=5, entity_id=target, delay=self._call_delay)
+            await self._async_real_thermostat_set_calibration(calibration_value=self._calibration_value, entity_id=target, delay=self._call_delay)
 
     async def _async_real_thermostats_set_hvac_mode(self, hvac_mode, entity_id, delay) -> None:
         self._is_updating_real_thermostats = True
@@ -381,9 +389,14 @@ class FusionThermostat(ClimateEntity, RestoreEntity):
         if delay > 0:
             _LOGGER.debug(f"Verzögerung von {delay} Sekunden.")
             await asyncio.sleep(delay)
-        calibration_entity_id = f"number.{entity_id.split(".")[1]}_local_temperature_calibration"
-        self._local_temperature_calibration = calibration_value
-        await self.hass.services.async_call(domain="number", service="set_value", service_data={"entity_id": calibration_entity_id,"value": calibration_value})
+        if self._test_server:
+            calibration_entity_id = f"input_number.{entity_id.split(".")[1]}_local_temperature_calibration"
+            self._local_temperature_calibration = calibration_value
+            await self.hass.services.async_call(domain="input_number", service="set_value", service_data={"entity_id": calibration_entity_id,"value": calibration_value})
+        else:
+            calibration_entity_id = f"number.{entity_id.split(".")[1]}_local_temperature_calibration"
+            self._local_temperature_calibration = calibration_value
+            await self.hass.services.async_call(domain="number", service="set_value", service_data={"entity_id": calibration_entity_id,"value": calibration_value})
         _LOGGER.debug("Calibration value set to %s for real Thermostat %s", calibration_value, entity_id)
 
     @property
@@ -445,4 +458,8 @@ class FusionThermostat(ClimateEntity, RestoreEntity):
         """Gibt zusätzliche Zustandsattribute zurück."""
         return {
             "local_temperature_calibration": self._local_temperature_calibration,
+            "calibration_value": self._calibration_value,
+            "hot_tolerance": self._hot_tolerance,
+            "cold_tolerance": self._cold_tolerance,
+            "test_server": self._test_server,
         }
